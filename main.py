@@ -48,9 +48,6 @@ def create_table():
     except Exception as e:
         print(f"Error al crear la tabla: {e}")
 
-import requests
-from datetime import datetime
-
 def fetch_weather_data():
     weather_data_list = []
     for city in CITIES:
@@ -90,16 +87,26 @@ def fetch_weather_data():
                     print(f"Temperatura no encontrada para {city}")
         except requests.exceptions.RequestException as e:
             print(f"Error al obtener datos para {city}: {e}")
-    return weather_data_list
+    
+    # Convertir la lista de diccionarios a un DataFrame
+    df = pd.DataFrame(weather_data_list)
+    return df
 
-def insert_weather_data(data_list):
+def insert_weather_data(df):
     session = Session()
     try:
-        for data in data_list:
-            weather_entry = WeatherData(**data)
+        for _, row in df.iterrows():
+            weather_entry = WeatherData(
+                city=row['city'],
+                timestamp=row['timestamp'],
+                temperature=row['temperature'],
+                humidity=row['humidity'],
+                pressure=row['pressure'],
+                weather=row['weather']
+            )
             session.merge(weather_entry)  # Usa `merge` para insertar o actualizar
         session.commit()
-        print("Datos insertados o actualizados exitosamente.")
+        print("Datos insertados exitosamente en Redshift.")
     except Exception as e:
         print(f"Error al insertar datos: {e}")
         session.rollback()
@@ -109,5 +116,5 @@ def insert_weather_data(data_list):
 if __name__ == "__main__":
     print("Inicio del script...")
     create_table()
-    weather_data_list = fetch_weather_data()
-    insert_weather_data(weather_data_list)
+    weather_df = fetch_weather_data()
+    insert_weather_data(weather_df)
